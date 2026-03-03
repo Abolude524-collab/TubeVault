@@ -1,0 +1,165 @@
+﻿
+> web@0.0.0 build
+> tsc -b && vite build
+
+[36mvite v7.3.1 [32mbuilding client environment for production...[36m[39m
+transforming...
+node.exe : Error: 
+Cannot apply unknown 
+utility class 
+`bg-slate-950`. Are 
+you using CSS modules 
+or similar and missing 
+`@reference`? https://t
+ailwindcss.com/docs/fun
+ctions-and-directives#r
+eference-directive
+At C:\Program Files\nod
+ejs\npm.ps1:29 char:3
++   & $NODE_EXE 
+$NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (Error: Cannot   
+  a...rence-directi    
+ve:String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+    at 
+onInvalidCandidate (C:\
+Users\23481\Desktop\gem
+ini-hack\web\node_modul
+es\tailwindcss\dist\lib
+.js:21:1314)
+    at Ee (C:\Users\234
+81\Desktop\gemini-hack\
+web\node_modules\tailwi
+ndcss\dist\lib.js:16:37
+066)
+    at C:\Users\23481\D
+esktop\gemini-hack\web\
+node_modules\tailwindcs
+s\dist\lib.js:21:355
+    at Pr (C:\Users\234
+81\Desktop\gemini-hack\
+web\node_modules\tailwi
+ndcss\dist\lib.js:3:173
+3)
+    at _ (C:\Users\2348
+1\Desktop\gemini-hack\w
+eb\node_modules\tailwin
+dcss\dist\lib.js:3:1377
+)
+    at Te (C:\Users\234
+81\Desktop\gemini-hack\
+web\node_modules\tailwi
+ndcss\dist\lib.js:21:17
+2)
+    at pn (C:\Users\234
+81\Desktop\gemini-hack\
+web\node_modules\tailwi
+ndcss\dist\lib.js:38:29
+4)
+    at async dn (C:\Use
+rs\23481\Desktop\gemini
+-hack\web\node_modules\
+tailwindcss\dist\lib.js
+:38:631)
+    at async Xr (C:\Use
+rs\23481\Desktop\gemini
+-hack\web\node_modules\
+@tailwindcss\node\dist\
+index.js:10:3417)
+    at async N (C:\User
+s\23481\Desktop\gemini-
+hack\web\node_modules\@
+tailwindcss\postcss\dis
+t\index.js:10:3979)
+[32mΓ£ô[39m 10 modules transformed.
+[31mΓ£ù[39m Build 
+failed in 2.93s
+[31merror during 
+build:
+[31m[vite:css] 
+[postcss] tailwindcss: 
+C:/Users/23481/Desktop/
+gemini-hack/web/src/ind
+ex.css:1:1: Cannot 
+apply unknown utility 
+class `bg-slate-950`. 
+Are you using CSS 
+modules or similar and 
+missing `@reference`? h
+ttps://tailwindcss.com/
+docs/functions-and-dire
+ctives#reference-direct
+ive[31m
+file: [36mC:/Users/234
+81/Desktop/gemini-hack/
+web/src/index.css:1:0[
+31m
+    at Input.error (C:\
+Users\23481\Desktop\gem
+ini-hack\web\node_modul
+es\postcss\lib\input.js
+:135:16)
+    at Root.error (C:\U
+sers\23481\Desktop\gemi
+ni-hack\web\node_module
+s\postcss\lib\node.js:1
+46:32)
+    at Object.Once (C:\
+Users\23481\Desktop\gem
+ini-hack\web\node_modul
+es\@tailwindcss\postcss
+\dist\index.js:10:6913)
+    at async 
+LazyResult.runAsync (C:
+\Users\23481\Desktop\ge
+mini-hack\web\node_modu
+les\postcss\lib\lazy-re
+sult.js:293:11)
+    at async 
+runPostCSS (file:///C:/
+Users/23481/Desktop/gem
+ini-hack/web/node_modul
+es/vite/dist/node/chunk
+s/config.js:30145:19)
+    at async 
+compilePostCSS (file://
+/C:/Users/23481/Desktop
+/gemini-hack/web/node_m
+odules/vite/dist/node/c
+hunks/config.js:30129:6
+)
+    at async 
+compileCSS (file:///C:/
+Users/23481/Desktop/gem
+ini-hack/web/node_modul
+es/vite/dist/node/chunk
+s/config.js:30059:26)
+    at async 
+Object.handler (file://
+/C:/Users/23481/Desktop
+/gemini-hack/web/node_m
+odules/vite/dist/node/c
+hunks/config.js:29592:5
+4)
+    at async transform 
+(file:///C:/Users/23481
+/Desktop/gemini-hack/we
+b/node_modules/rollup/d
+ist/es/shared/node-entr
+y.js:21246:16)
+    at async ModuleLoad
+er.addModuleSource (fil
+e:///C:/Users/23481/Des
+ktop/gemini-hack/web/no
+de_modules/rollup/dist/
+es/shared/node-entry.js
+:21474:36)[39m

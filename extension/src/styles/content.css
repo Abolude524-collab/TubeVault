@@ -1,0 +1,6 @@
+/* 
+  content.css — Minimal global styles for the content script.
+  Most styles are injected into the Shadow DOM via JS (getWidgetStyles in index.jsx).
+  This file is only loaded by the manifest and applies to the host page scope,
+  so we keep it intentionally empty to avoid polluting YouTube's styles.
+*/
