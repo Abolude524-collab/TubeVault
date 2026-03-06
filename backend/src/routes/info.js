@@ -1,5 +1,5 @@
 import express from 'express';
-import { getVideoInfo } from '../services/ytdlp.js';
+import { getVideoInfo, normalizeYtDlpError } from '../services/ytdlp.js';
 
 const router = express.Router();
 
@@ -23,8 +23,9 @@ router.get('/', async (req, res) => {
         const info = await getVideoInfo(url);
         res.json(info);
     } catch (err) {
-        console.error('[/api/info] Error:', err.message);
-        res.status(500).json({ error: 'Failed to fetch video info', details: err.message });
+        const normalized = normalizeYtDlpError(err);
+        console.error('[/api/info] Error:', normalized.details);
+        res.status(normalized.status).json({ error: normalized.error, details: normalized.details });
     }
 });
 

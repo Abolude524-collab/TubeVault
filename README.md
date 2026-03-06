@@ -137,4 +137,35 @@ MONGODB_URI=mongodb://localhost:27017/yt-downloader
 ```
 
 If not set, the backend runs fine without it (history is still stored locally in the extension).
+
+---
+
+## Production Notes (Render / Cloud)
+
+If YouTube returns `429 Too Many Requests` or `Sign in to confirm you're not a bot`, configure these backend env vars:
+
+```env
+# Recommended for current yt-dlp YouTube extractor behavior
+YTDLP_JS_RUNTIMES=node
+
+# Optional: explicit yt-dlp binary path (if needed)
+# YTDLP_PATH=/opt/render/project/src/backend/bin/yt-dlp
+
+# Optional: exported YouTube cookies file path (Netscape format)
+# YTDLP_COOKIES_PATH=/opt/render/project/src/backend/secrets/youtube_cookies.txt
+
+# Optional: same cookies file content as base64 (easier for Render env vars)
+# YTDLP_COOKIES_BASE64=LS0tIG5ldHNjYXBlIGNvb2tpZSBmaWxlIC0tLQo...
+
+# Optional: fallback cookie source for local development only
+# YTDLP_COOKIES_FROM_BROWSER=chrome
+
+# Optional: proxy when IP reputation/rate limit is the issue
+# YTDLP_PROXY=http://user:pass@host:port
+
+# Optional: explicit CORS allow-list for your frontend origins (comma-separated)
+# CORS_ORIGINS=https://your-frontend-domain.com
+```
+
+After setting env vars, redeploy backend.
 "# TubeVault" 

@@ -1,6 +1,6 @@
 import express from 'express';
 import mongoose from 'mongoose';
-import { getVideoInfo, spawnDownload } from '../services/ytdlp.js';
+import { getVideoInfo, spawnDownload, normalizeYtDlpError } from '../services/ytdlp.js';
 import Download from '../models/Download.js';
 
 import { progressMap } from '../services/state.js';
@@ -26,7 +26,8 @@ router.get('/', async (req, res) => {
     try {
         info = await getVideoInfo(url);
     } catch (err) {
-        return res.status(500).json({ error: 'Failed to fetch video info', details: err.message });
+        const normalized = normalizeYtDlpError(err);
+        return res.status(normalized.status).json({ error: normalized.error, details: normalized.details });
     }
 
     // Sanitize filename

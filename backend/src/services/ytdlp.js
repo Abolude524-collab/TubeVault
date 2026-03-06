@@ -1,11 +1,40 @@
 import { spawn } from 'child_process';
-import { existsSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const backendRoot = join(__dirname, '..', '..');
 const bundledYtDlpPath = join(backendRoot, 'bin', process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp');
+const extractorArgs = process.env.YTDLP_EXTRACTOR_ARGS || 'youtube:player_client=android,web';
+const jsRuntimes = process.env.YTDLP_JS_RUNTIMES || 'node';
+
+function resolveCookiesPath() {
+    const configuredCookiesPath = process.env.YTDLP_COOKIES_PATH;
+    if (configuredCookiesPath) {
+        if (existsSync(configuredCookiesPath)) {
+            return configuredCookiesPath;
+        }
+        console.warn(`[yt-dlp] YTDLP_COOKIES_PATH not found: ${configuredCookiesPath}`);
+    }
+
+    if (process.env.YTDLP_COOKIES_BASE64) {
+        try {
+            const runtimeDir = join(backendRoot, '.runtime');
+            mkdirSync(runtimeDir, { recursive: true });
+            const runtimeCookiesPath = join(runtimeDir, 'youtube_cookies.txt');
+            const decoded = Buffer.from(process.env.YTDLP_COOKIES_BASE64, 'base64').toString('utf-8');
+            writeFileSync(runtimeCookiesPath, decoded, 'utf-8');
+            return runtimeCookiesPath;
+        } catch (error) {
+            console.warn(`[yt-dlp] Failed to decode YTDLP_COOKIES_BASE64: ${error.message}`);
+        }
+    }
+
+    return null;
+}
+
+const validCookiesPath = resolveCookiesPath();
 
 function resolveYtDlpCommand() {
     if (process.env.YTDLP_PATH) return process.env.YTDLP_PATH;
@@ -14,6 +43,31 @@ function resolveYtDlpCommand() {
 }
 
 const ytdlpCommand = resolveYtDlpCommand();
+
+function buildBaseArgs() {
+    const args = [
+        '--no-playlist',
+        '--js-runtimes', jsRuntimes,
+        '--extractor-args', extractorArgs,
+        '--retries', '3',
+        '--fragment-retries', '3',
+        '--sleep-requests', '1',
+        '--sleep-interval', '1',
+        '--max-sleep-interval', '5',
+    ];
+
+    if (process.env.YTDLP_PROXY) {
+        args.push('--proxy', process.env.YTDLP_PROXY);
+    }
+
+    if (validCookiesPath) {
+        args.push('--cookies', validCookiesPath);
+    } else if (process.env.YTDLP_COOKIES_FROM_BROWSER) {
+        args.push('--cookies-from-browser', process.env.YTDLP_COOKIES_FROM_BROWSER);
+    }
+
+    return args;
+}
 
 function spawnYtDlp(args) {
     return spawn(ytdlpCommand, args, { shell: false, windowsHide: true });
@@ -64,7 +118,7 @@ function runYtDlp(args) {
  * Returns: { id, title, thumbnail, duration, uploader, formats[] }
  */
 export async function getVideoInfo(url) {
-    const raw = await runYtDlp(['--dump-json', '--no-playlist', url]);
+    const raw = await runYtDlp([...buildBaseArgs(), '--dump-json', url]);
     const data = JSON.parse(raw);
 
     // Build a clean list of available quality options
@@ -116,7 +170,7 @@ export function spawnDownload(url, format, quality, onProgress) {
     }
 
     const args = [
-        '--no-playlist',
+        ...buildBaseArgs(),
         '--newline', // Output progress on a new line
         '-f', formatSelector,
         ...extraArgs,
@@ -145,5 +199,56 @@ export function spawnDownload(url, format, quality, onProgress) {
     }
 
     return proc;
+}
+
+export function normalizeYtDlpError(err) {
+    const rawMessage = String(err?.message || 'Unknown yt-dlp error');
+    const compactMessage = rawMessage.replace(/\s+/g, ' ').trim();
+
+    if (/Sign in to confirm you.?re not a bot|Use --cookies/i.test(rawMessage)) {
+        return {
+            status: 429,
+            error: 'YouTube requires additional verification for this request.',
+            details: 'Server needs authenticated YouTube cookies. Set YTDLP_COOKIES_PATH on backend and redeploy.',
+        };
+    }
+
+    if (/HTTP Error 429|Too Many Requests/i.test(rawMessage)) {
+        return {
+            status: 429,
+            error: 'YouTube rate limit reached.',
+            details: 'Please retry in a minute. If this persists, configure YTDLP_COOKIES_PATH and optionally YTDLP_PROXY.',
+        };
+    }
+
+    if (/No supported JavaScript runtime/i.test(rawMessage)) {
+        return {
+            status: 500,
+            error: 'Server yt-dlp runtime is incomplete.',
+            details: 'Set YTDLP_JS_RUNTIMES=node in backend environment and redeploy.',
+        };
+    }
+
+    if (/yt-dlp is not installed|spawn .*ENOENT|Failed to start yt-dlp/i.test(rawMessage)) {
+        return {
+            status: 500,
+            error: 'yt-dlp is not available on backend.',
+            details: 'Ensure postinstall runs setup-ytdlp and/or set YTDLP_PATH.',
+        };
+    }
+
+    if (/ffmpeg|ffprobe/i.test(rawMessage)) {
+        return {
+            status: 500,
+            error: 'ffmpeg is required for this format.',
+            details: 'Install ffmpeg on backend or use MP4 progressive download.',
+        };
+    }
+
+    return {
+        status: 500,
+        error: 'Failed to fetch video info',
+        details: compactMessage,
+    };
 }
 
