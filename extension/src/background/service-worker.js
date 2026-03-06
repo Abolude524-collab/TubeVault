@@ -1,4 +1,4 @@
-const BACKEND_URL = 'http://localhost:3001';
+const BACKEND_URL = 'https://tubevault-t551.onrender.com';
 
 // ── Message handler ──────────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -10,7 +10,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
 
     if (message.type === 'START_DOWNLOAD') {
-        handleStartDownload(message).then(sendResponse).catch((err) => {
+        const id = crypto.randomUUID?.() || Math.random().toString(36).slice(2);
+        handleStartDownload({ ...message, id }).then(res => sendResponse({ ...res, id })).catch((err) => {
             sendResponse({ error: err.message });
         });
         return true;
@@ -20,6 +21,15 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         chrome.storage.local.get(['downloadHistory'], (result) => {
             sendResponse({ history: result.downloadHistory || [] });
         });
+        return true;
+    }
+
+    // Add progress polling support
+    if (message.type === 'GET_PROGRESS') {
+        fetch(`${BACKEND_URL}/api/progress?id=${message.id}`)
+            .then(res => res.json())
+            .then(sendResponse)
+            .catch(err => sendResponse({ error: err.message }));
         return true;
     }
 });
@@ -35,8 +45,9 @@ async function handleFetchInfo(url) {
 }
 
 // ── Trigger download via chrome.downloads API ────────────────────────────────
-async function handleStartDownload({ url, format, quality, title }) {
-    const downloadUrl = `${BACKEND_URL}/api/download?url=${encodeURIComponent(url)}&format=${format}&quality=${quality}`;
+async function handleStartDownload({ url, format, quality, title, id }) {
+    const downloadUrl = `${BACKEND_URL}/api/download?url=${encodeURIComponent(url)}&format=${format}&quality=${quality}&id=${id}`;
+
 
     return new Promise((resolve, reject) => {
         chrome.downloads.download(

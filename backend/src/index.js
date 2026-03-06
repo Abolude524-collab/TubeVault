@@ -5,8 +5,10 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import infoRouter from './routes/info.js';
 import downloadRouter from './routes/download.js';
+import progressRouter from './routes/progress.js';
 
 dotenv.config();
+
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -36,8 +38,10 @@ app.use(
 // ── Routes ──────────────────────────────────────────────────────────────────
 app.use('/api/info', infoRouter);
 app.use('/api/download', downloadRouter);
+app.use('/api/progress', progressRouter);
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+
 
 // ── MongoDB (optional) ──────────────────────────────────────────────────────
 if (process.env.MONGODB_URI) {

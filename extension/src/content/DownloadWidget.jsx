@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
-const BACKEND_URL = 'http://localhost:3001';
+const BACKEND_URL = 'https://tubevault-t551.onrender.com';
+
 
 const QUALITIES = ['360p', '480p', '720p', '1080p'];
 const FORMATS = ['mp4', 'mp3'];
@@ -22,6 +23,8 @@ export default function DownloadWidget() {
     const [selectedFormat, setSelectedFormat] = useState('mp4');
     const [errorMsg, setErrorMsg] = useState('');
     const [showDropdown, setShowDropdown] = useState(false);
+    const [downloadProgress, setDownloadProgress] = useState(0);
+
 
     const currentUrl = window.location.href;
 
@@ -65,9 +68,10 @@ export default function DownloadWidget() {
         if (!videoInfo) return;
         setStatus(STATUS.DOWNLOADING);
         setShowDropdown(false);
+        setDownloadProgress(0);
         const quality = selectedQuality.replace('p', '');
         try {
-            await new Promise((resolve, reject) => {
+            const { id } = await new Promise((resolve, reject) => {
                 chrome.runtime.sendMessage(
                     {
                         type: 'START_DOWNLOAD',
@@ -83,14 +87,32 @@ export default function DownloadWidget() {
                     }
                 );
             });
-            setStatus(STATUS.DONE);
-            // Reset after 3s
-            setTimeout(() => setStatus(STATUS.IDLE), 3000);
+
+            // Poll for progress via background script
+            const pollInterval = setInterval(() => {
+                chrome.runtime.sendMessage({ type: 'GET_PROGRESS', id }, (res) => {
+                    if (res?.progress !== undefined) {
+                        setDownloadProgress(Math.round(res.progress));
+                    }
+                    if (res?.status === 'done' || res?.status === 'error') {
+                        clearInterval(pollInterval);
+                        if (res.status === 'done') {
+                            setStatus(STATUS.DONE);
+                            setTimeout(() => setStatus(STATUS.IDLE), 3000);
+                        } else {
+                            setErrorMsg('Download failed');
+                            setStatus(STATUS.ERROR);
+                        }
+                    }
+                });
+            }, 1000);
+
         } catch (err) {
             setErrorMsg(err.message || 'Download failed');
             setStatus(STATUS.ERROR);
         }
-    }, [videoInfo, currentUrl, selectedFormat, selectedQuality]);
+    }, [videoInfo, currentUrl, selectedFormat, selectedQuality, setDownloadProgress]);
+
 
     const handleButtonClick = () => {
         if (status === STATUS.IDLE || status === STATUS.ERROR) {
@@ -110,17 +132,24 @@ export default function DownloadWidget() {
                 className={`ytdl-btn ytdl-btn--${status}`}
                 onClick={handleButtonClick}
                 disabled={status === STATUS.LOADING_INFO || status === STATUS.DOWNLOADING}
+                style={status === STATUS.DOWNLOADING ? {
+                    backgroundImage: `linear-gradient(to right, rgba(255,255,255,0.2) ${downloadProgress}%, transparent ${downloadProgress}%)`,
+                    backgroundClip: 'padding-box',
+                } : {}}
                 title={
                     status === STATUS.DONE
                         ? 'Download started!'
-                        : status === STATUS.ERROR
-                            ? errorMsg
-                            : 'Download video'
+                        : status === STATUS.DOWNLOADING
+                            ? `Downloading... ${downloadProgress}%`
+                            : status === STATUS.ERROR
+                                ? errorMsg
+                                : 'Download video'
                 }
             >
                 <span className="ytdl-btn__icon">{getIcon(status)}</span>
-                <span className="ytdl-btn__label">{getLabel(status)}</span>
+                <span className="ytdl-btn__label">{status === STATUS.DOWNLOADING ? `${downloadProgress}%` : getLabel(status)}</span>
             </button>
+
 
             {/* Dropdown Panel */}
             {showDropdown && status === STATUS.READY && (

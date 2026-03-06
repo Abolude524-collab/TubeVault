@@ -5,14 +5,31 @@ import { spawn } from 'child_process';
  */
 function runYtDlp(args) {
     return new Promise((resolve, reject) => {
-        const proc = spawn('yt-dlp', args, { shell: true });
+        const proc = spawn('yt-dlp', args, { shell: false, windowsHide: true });
         let stdout = '';
         let stderr = '';
+        let settled = false;
+        const timeoutId = setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            proc.kill('SIGTERM');
+            reject(new Error('yt-dlp timed out while fetching video info'));
+        }, 60000);
 
         proc.stdout.on('data', (d) => (stdout += d.toString()));
         proc.stderr.on('data', (d) => (stderr += d.toString()));
 
+        proc.on('error', (err) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timeoutId);
+            reject(new Error(`Failed to start yt-dlp: ${err.message}`));
+        });
+
         proc.on('close', (code) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timeoutId);
             if (code === 0) resolve(stdout.trim());
             else reject(new Error(stderr || `yt-dlp exited with code ${code}`));
         });
@@ -57,9 +74,10 @@ export async function getVideoInfo(url) {
  * @param {string} url   - YouTube URL
  * @param {string} format - 'mp4' | 'mp3'
  * @param {string} quality - e.g. '720' (just the number)
- * @returns {{ proc: ChildProcess, filename: string }}
+ * @param {function} onProgress - callback with percentage (0-100)
+ * @returns {ChildProcess}
  */
-export function spawnDownload(url, format, quality) {
+export function spawnDownload(url, format, quality, onProgress) {
     const safeQuality = parseInt(quality, 10) || 720;
 
     let formatSelector;
@@ -77,6 +95,7 @@ export function spawnDownload(url, format, quality) {
 
     const args = [
         '--no-playlist',
+        '--newline', // Output progress on a new line
         '-f', formatSelector,
         ...extraArgs,
         '-o', '-',          // output to stdout
@@ -85,6 +104,20 @@ export function spawnDownload(url, format, quality) {
         url,
     ];
 
-    const proc = spawn('yt-dlp', args, { shell: true });
+    const proc = spawn('yt-dlp', args, { shell: false, windowsHide: true });
+
+    // Parse progress from stderr
+    if (onProgress) {
+        proc.stderr.on('data', (data) => {
+            const line = data.toString();
+            const match = line.match(/\[download\]\s+(\d+\.\d+)%/);
+            if (match) {
+                const percentage = parseFloat(match[1]);
+                onProgress(percentage);
+            }
+        });
+    }
+
     return proc;
 }
+
