@@ -5,7 +5,7 @@ import { motion, AnimatePresence, useScroll, useSpring } from 'framer-motion';
 const BACKEND_URL =
   import.meta.env.VITE_BACKEND_URL ||
   (import.meta.env.DEV ? 'http://localhost:3001' : 'https://tubevault-t551.onrender.com');
-const REQUEST_TIMEOUT_MS = 20000;
+const REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_REQUEST_TIMEOUT_MS || (import.meta.env.DEV ? 20000 : 90000));
 
 
 interface VideoInfo {

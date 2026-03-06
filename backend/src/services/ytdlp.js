@@ -1,11 +1,30 @@
 import { spawn } from 'child_process';
+import { existsSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const backendRoot = join(__dirname, '..', '..');
+const bundledYtDlpPath = join(backendRoot, 'bin', process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp');
+
+function resolveYtDlpCommand() {
+    if (process.env.YTDLP_PATH) return process.env.YTDLP_PATH;
+    if (existsSync(bundledYtDlpPath)) return bundledYtDlpPath;
+    return 'yt-dlp';
+}
+
+const ytdlpCommand = resolveYtDlpCommand();
+
+function spawnYtDlp(args) {
+    return spawn(ytdlpCommand, args, { shell: false, windowsHide: true });
+}
 
 /**
  * Run yt-dlp with given args and collect stdout as a string.
  */
 function runYtDlp(args) {
     return new Promise((resolve, reject) => {
-        const proc = spawn('yt-dlp', args, { shell: false, windowsHide: true });
+        const proc = spawnYtDlp(args);
         let stdout = '';
         let stderr = '';
         let settled = false;
@@ -23,6 +42,10 @@ function runYtDlp(args) {
             if (settled) return;
             settled = true;
             clearTimeout(timeoutId);
+            if (err?.code === 'ENOENT') {
+                reject(new Error('yt-dlp is not installed on server. Configure YTDLP_PATH or run setup-ytdlp during deploy.'));
+                return;
+            }
             reject(new Error(`Failed to start yt-dlp: ${err.message}`));
         });
 
@@ -88,9 +111,8 @@ export function spawnDownload(url, format, quality, onProgress) {
         formatSelector = 'bestaudio/best';
         extraArgs = ['-x', '--audio-format', 'mp3', '--audio-quality', '0'];
     } else {
-        // Merge best video up to requested height with best audio → mp4
-        formatSelector = `bestvideo[height<=${safeQuality}][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=${safeQuality}]+bestaudio/best[height<=${safeQuality}]`;
-        extraArgs = ['--merge-output-format', 'mp4'];
+        // Prefer progressive mp4 to avoid requiring ffmpeg on minimal deploy environments
+        formatSelector = `best[height<=${safeQuality}][ext=mp4]/best[height<=${safeQuality}]`;
     }
 
     const args = [
@@ -104,13 +126,17 @@ export function spawnDownload(url, format, quality, onProgress) {
         url,
     ];
 
-    const proc = spawn('yt-dlp', args, { shell: false, windowsHide: true });
+    const proc = spawnYtDlp(args);
+
+    proc.on('error', (err) => {
+        console.error('[yt-dlp spawn error]', err.message);
+    });
 
     // Parse progress from stderr
     if (onProgress) {
         proc.stderr.on('data', (data) => {
             const line = data.toString();
-            const match = line.match(/\[download\]\s+(\d+\.\d+)%/);
+            const match = line.match(/\[download\]\s+(\d+(?:\.\d+)?)%/);
             if (match) {
                 const percentage = parseFloat(match[1]);
                 onProgress(percentage);

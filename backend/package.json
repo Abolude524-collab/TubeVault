@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "postinstall": "node scripts/setup-ytdlp.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",

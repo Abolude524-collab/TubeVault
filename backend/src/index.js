@@ -12,19 +12,26 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const configuredOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 // ── Middleware ──────────────────────────────────────────────────────────────
 app.use(morgan('dev'));
 app.use(express.json());
 
-// Allow Chrome extension origins (chrome-extension://*) + localhost for dev
+// Allow Chrome extension origins + localhost + configured production origins
 app.use(
   cors({
     origin: (origin, callback) => {
       if (
         !origin ||
         origin.startsWith('chrome-extension://') ||
-        origin.startsWith('http://localhost')
+        origin.startsWith('http://localhost') ||
+        origin.startsWith('https://localhost') ||
+        configuredOrigins.length === 0 ||
+        configuredOrigins.includes(origin)
       ) {
         callback(null, true);
       } else {
