@@ -55,10 +55,24 @@ function App() {
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
   const [showToast, setShowToast] = useState(false);
+  const [toastMode, setToastMode] = useState<'started' | 'done'>('done');
 
   const resultRef = useRef<HTMLDivElement>(null);
+  const toastTimerRef = useRef<number | null>(null);
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30 });
+
+  const triggerToast = (mode: 'started' | 'done', durationMs = 5000) => {
+    if (toastTimerRef.current) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+    setToastMode(mode);
+    setShowToast(true);
+    toastTimerRef.current = window.setTimeout(() => {
+      setShowToast(false);
+      toastTimerRef.current = null;
+    }, durationMs);
+  };
 
   const fetchWithTimeout = async (resource: string, timeoutMs = REQUEST_TIMEOUT_MS) => {
     const controller = new AbortController();
@@ -118,6 +132,7 @@ function App() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    triggerToast('started', 3500);
 
     // Poll for progress
     const pollInterval = setInterval(async () => {
@@ -135,8 +150,7 @@ function App() {
             setDownloadProgress(100);
             setTimeout(() => {
               setDownloadProgress(null);
-              setShowToast(true);
-              setTimeout(() => setShowToast(false), 5000);
+              triggerToast('done', 5000);
             }, 1000);
           } else {
             setError('Download failed on server');
@@ -380,14 +394,23 @@ function App() {
             className="fixed bottom-8 right-8 z-50"
           >
             <div className="flex items-center gap-4 bg-[#180f1f] border border-white/10 p-4 rounded-2xl shadow-2xl animate-bounce-subtle">
-              <div className="size-8 rounded-full bg-green-500/20 text-green-500 flex items-center justify-center">
-                <span className="material-symbols-outlined text-sm">check</span>
+              <div className={`size-8 rounded-full flex items-center justify-center ${toastMode === 'done' ? 'bg-green-500/20 text-green-500' : 'bg-sky-500/20 text-sky-400'}`}>
+                <span className="material-symbols-outlined text-sm">{toastMode === 'done' ? 'check' : 'download'}</span>
               </div>
               <div>
-                <p className="text-xs font-bold">Download Ready!</p>
-                <p className="text-[10px] text-slate-400">Your high-quality file is ready.</p>
+                <p className="text-xs font-bold">{toastMode === 'done' ? 'Download Ready!' : 'Download Started'}</p>
+                <p className="text-[10px] text-slate-400">{toastMode === 'done' ? 'Your high-quality file is ready.' : 'Your video is now downloading in the background.'}</p>
               </div>
-              <button onClick={() => setShowToast(false)} className="text-slate-500 hover:text-white ml-2">
+              <button
+                onClick={() => {
+                  if (toastTimerRef.current) {
+                    window.clearTimeout(toastTimerRef.current);
+                    toastTimerRef.current = null;
+                  }
+                  setShowToast(false);
+                }}
+                className="text-slate-500 hover:text-white ml-2"
+              >
                 <span className="material-symbols-outlined text-sm">close</span>
               </button>
             </div>
